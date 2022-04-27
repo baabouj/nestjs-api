@@ -7,10 +7,16 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import { LoginDto, SignupDto } from './dto';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {}
 
   async login({ email, password }: LoginDto) {
     const user = await this.prismaService.user.findUnique({
@@ -25,10 +31,7 @@ export class AuthService {
 
     if (!isValid) throw new ForbiddenException('Invalid credentials');
 
-    // TODO: return a JWT, holding the user id, instead of the user object
-
-    delete user.password;
-    return user;
+    return this.signToken(user.id, user.name);
   }
 
   async signup({ name, email, password }: SignupDto) {
@@ -43,18 +46,35 @@ export class AuthService {
         },
       });
 
-      // TODO: return a JWT, holding the user id, instead of the user object
-
-      delete user.password;
-      return user;
+      return this.signToken(user.id, user.name);
     } catch (error) {
       // Check if the error is a unique constraint violation
-      if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ForbiddenException('Credentials already taken');
-        }
-      }
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      )
+        throw new ForbiddenException('Credentials already taken');
+
       throw error;
     }
+  }
+
+  async signToken(
+    userId: string,
+    name: string,
+  ): Promise<{ access_token: string }> {
+    const payload = {
+      sub: userId,
+      name,
+    };
+
+    const access_token = await this.jwtService.signAsync(payload, {
+      secret: this.config.get('JWT_SECRET'),
+      expiresIn: '30m',
+    });
+
+    return {
+      access_token,
+    };
   }
 }
