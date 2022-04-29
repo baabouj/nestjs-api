@@ -4,7 +4,7 @@ import * as argon from 'argon2';
 
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 import { LoginDto, SignupDto } from './dto';
 import { JwtService } from '@nestjs/jwt';
