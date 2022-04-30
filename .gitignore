@@ -4,6 +4,7 @@
 
 # ENV
 .env
+.env.testing
 
 # Logs
 logs
