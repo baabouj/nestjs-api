@@ -1,24 +1,53 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 
-describe('AppController (e2e)', () => {
+import * as pactum from 'pactum';
+
+import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/prisma/prisma.service';
+
+describe('App (e2e)', () => {
   let app: INestApplication;
 
-  beforeEach(async () => {
+  let prisma: PrismaService;
+
+  beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+      }),
+    );
+
+    prisma = app.get(PrismaService);
+
+    // clean th database
+    await prisma.$transaction([
+      prisma.post.deleteMany(),
+      prisma.user.deleteMany(),
+    ]);
+
     await app.init();
+    await app.listen(4000);
+
+    pactum.request.setBaseUrl('http://localhost:4000');
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  afterAll(async () => {
+    await app.close();
+  });
+
+  describe('Auth', () => {
+    describe('Signup', () => {
+      it.todo('should signup');
+    });
+
+    describe('Login', () => {
+      it.todo('should login');
+    });
   });
 });
